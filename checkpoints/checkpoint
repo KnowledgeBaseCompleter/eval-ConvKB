@@ -1,0 +1,2 @@
+model_checkpoint_path: "/data/milatmp1/sunzhiqi/runs/fb15k237/checkpoints/model-200"
+all_model_checkpoint_paths: "/data/milatmp1/sunzhiqi/runs/fb15k237/checkpoints/model-200"
