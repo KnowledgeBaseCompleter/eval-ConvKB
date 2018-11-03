@@ -1,6 +1,6 @@
 #### Evaluation of ConvKB on FB15k after fixing the bug.
 
-The results of ConvKB on FB15k are in model-200.eval.0.txt:
+The results of ConvKB on FB15k are in checkpoints/model-200.eval.0.txt:
 
 8725015.0 3213.2220056354204 6145.0
 3956645.0 6726.795358734404 11121.0
