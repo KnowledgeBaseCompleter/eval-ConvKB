@@ -37,6 +37,7 @@ We also provide the script that training and evaluating ConvKB on FB15k.
 The results of ConvKB on FB15k are in checkpoints/model-200.eval.0.txt:
 
 8725015.0 3213.2220056354204 6145.0
+
 3956645.0 6726.795358734404 11121.0
 
 which represents:
