@@ -1,4 +1,4 @@
-## Evaluation of ConvKB on FB15k after fixing the bug
+## Evaluation of ConvKB on FB15k-237 after fixing the bug
 
 #### The bug in ConvKB evaluation
 
@@ -30,11 +30,11 @@ while len(new_x_batch) % ((int(args.neg_ratio) + 1) * args.batch_size) != 0:
     new_y_batch = np.append(new_y_batch, [y_batch[i]], axis=0)
 ```
 
-We also provide the script that we used for training and evaluating ConvKB on FB15k.
+We also provide the script that we used for training and evaluating ConvKB on FB15k-237.
 
 #### Our results after fixing the bug
 
-The results of ConvKB on FB15k are in checkpoints/model-200.eval.0.txt:
+The results of ConvKB on FB15k-237 are in checkpoints/model-200.eval.0.txt:
 
 8725015.0 3213.2220056354204 6145.0
 
@@ -50,7 +50,7 @@ And ConvKB MR, MRR and HITS10 of **tail_results** are:
 
 3956645.0 / 20466 = **193**, 6726.795358734404 / 20466 * 100 = **32.8**, 11121.0 / 20466 * 100 = **54.3**
 
-**So, the overall results of ConvKB on FB15k are:**
+**So, the overall results of ConvKB on FB15k-237 are:**
 
 **MR = 309, MRR = 24.25, HITS10 = 42.16**
 
