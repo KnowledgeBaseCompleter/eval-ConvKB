@@ -10,7 +10,7 @@ For evaluation, given a query (h,r, ?), the goals is to identify the rank of the
 
 Our eval.py and model.py would fix the bug.
 
-In model.py, we remove the constraint on the batch size:
+In model.py, we removed the constraint on the batch size:
 
 ```python
 #from
@@ -21,7 +21,7 @@ self.input_x = tf.placeholder(tf.int32, [None, sequence_length], name="input_x")
 self.input_y = tf.placeholder(tf.float32, [None, num_classes], name="input_y")
 ```
 
-In eval.py, we remove the codes that create duplicates of the correct triplets:
+In eval.py, we removed the codes that create the duplicates of the correct triplets:
 
 ```python
 #remove the following codes
@@ -30,7 +30,7 @@ while len(new_x_batch) % ((int(args.neg_ratio) + 1) * args.batch_size) != 0:
     new_y_batch = np.append(new_y_batch, [y_batch[i]], axis=0)
 ```
 
-We also provide the script that training and evaluating ConvKB on FB15k.
+We also provide the script that we used for training and evaluating ConvKB on FB15k.
 
 #### Our results after fixing the bug
 
