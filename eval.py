@@ -32,6 +32,7 @@ parser.add_argument("--allow_soft_placement", default=True, type=bool, help="All
 parser.add_argument("--log_device_placement", default=False, type=bool, help="Log placement of ops on devices")
 parser.add_argument("--model_name", default='wn18rr', help="")
 parser.add_argument("--useConstantInit", action='store_true')
+parser.add_argument("--eval_type", default='rotate', help="")
 
 parser.add_argument("--model_index", default='200', help="")
 parser.add_argument("--num_splits", default=8, type=int, help="Split the validation set into 8 parts for a faster evaluation")
@@ -107,7 +108,7 @@ if args.decode == False:
             _file = checkpoint_prefix + "-" + _model_index
             lstHT = []
             for _index in range(args.num_splits):
-                with open(_file + '.eval.' + str(_index) + '.txt') as f:
+                with open(_file + '.eval_{}.'.format(args.eval_type) + str(_index) + '.txt') as f:
                     for _line in f:
                         if _line.strip() != '':
                             lstHT.append(list(map(float, _line.strip().split())))
@@ -175,25 +176,57 @@ else:
                     def test_prediction(x_batch, y_batch, head_or_tail='head'):
 
                         hits10 = 0.0
+                        hits1 = 0.0
+                        hits3 = 0.0
                         mrr = 0.0
                         mr = 0.0
+                        eval_type = args.eval_type
 
                         for i in range(len(x_batch)):
                             new_x_batch = np.tile(x_batch[i], (len(entity2id), 1))
                             new_y_batch = np.tile(y_batch[i], (len(entity2id), 1))
-                            if head_or_tail == 'head':
-                                new_x_batch[:, 0] = entity_array
-                            else:  # 'tail'
-                                new_x_batch[:, 2] = entity_array
 
-                            #while len(new_x_batch) % ((int(args.neg_ratio) + 1) * args.batch_size) != 0:
-                            #    new_x_batch = np.append(new_x_batch, [x_batch[i]], axis=0)
-                            #    new_y_batch = np.append(new_y_batch, [y_batch[i]], axis=0)
+                            if head_or_tail == 'head': new_x_batch[:, 0] = entity_array
+                            else:                new_x_batch[:, 2] = entity_array
 
-                            if head_or_tail == 'head':
-                                entity_array1 = new_x_batch[:, 0]
-                            else:  # 'tail'
-                                entity_array1 = new_x_batch[:, 2]
+                            if eval_type != 'rotate':
+                                lstIdx = []
+                                for tmpIdxTriple in range(len(new_x_batch)):
+                                    tmpTriple = (new_x_batch[tmpIdxTriple][0], new_x_batch[tmpIdxTriple][1],
+                                                 new_x_batch[tmpIdxTriple][2])
+                                    if (tmpTriple in train) or (tmpTriple in valid) or (tmpTriple in test): #also remove the valid test triple
+                                        lstIdx.append(tmpIdxTriple)
+                                new_x_batch = np.delete(new_x_batch, lstIdx, axis=0)
+                                new_y_batch = np.delete(new_y_batch, lstIdx, axis=0)
+
+                            if eval_type in ['org', 'geq']:
+                                new_x_batch = np.insert(new_x_batch, 0, x_batch[i], axis=0)
+                                new_y_batch = np.insert(new_y_batch, 0, y_batch[i], axis=0)
+
+                            elif eval_type in ['last']:
+                                new_x_batch = np.concatenate([new_x_batch, [x_batch[i]]], 0)
+                                new_y_batch = np.concatenate([new_y_batch, [y_batch[i]]], 0)
+
+                            elif eval_type in ['random']:
+                                rand   = np.random.randint(new_x_batch.shape[0])
+                                new_x_batch = np.insert(new_x_batch, rand, x_batch[i], axis=0)
+                                new_y_batch = np.insert(new_y_batch, rand, y_batch[i], axis=0)
+
+                            elif eval_type == 'rotate':
+                                if head_or_tail == 'head':     entity_array1 = new_x_batch[:, 0]
+                                else:                 entity_array1 = new_x_batch[:, 2]
+
+                            else:
+                                raise NotImplementedError
+
+                            # for running with a batch size
+                            while len(new_x_batch) % ((int(args.neg_ratio) + 1) * args.batch_size) != 0:
+                                new_x_batch = np.append(new_x_batch, [x_batch[i]], axis=0)
+                                new_y_batch = np.append(new_y_batch, [y_batch[i]], axis=0)
+
+                            # if eval_type == 'rotate':
+                            #     if head_or_tail == 'head':     entity_array1 = new_x_batch[:, 0]
+                            #     else:                 entity_array1 = new_x_batch[:, 2]
 
                             results = []
                             listIndexes = range(0, len(new_x_batch), (int(args.neg_ratio) + 1) * args.batch_size)
@@ -201,57 +234,89 @@ else:
                                 results = np.append(results, predict(
                                     new_x_batch[listIndexes[tmpIndex]:listIndexes[tmpIndex + 1]],
                                     new_y_batch[listIndexes[tmpIndex]:listIndexes[tmpIndex + 1]]))
-                            results = np.append(results,
-                                                predict(new_x_batch[listIndexes[-1]:], new_y_batch[listIndexes[-1]:]))
+                            results = np.append(results, predict(new_x_batch[listIndexes[-1]:], new_y_batch[listIndexes[-1]:]))
+                            results = np.reshape(results, -1)
 
-                            results = np.reshape(results, [entity_array1.shape[0], 1])
-                            results_with_id = np.hstack(
-                                (np.reshape(entity_array1, [entity_array1.shape[0], 1]), results))
-                            results_with_id = results_with_id[np.argsort(results_with_id[:, 1])]
-                            results_with_id = results_with_id[:, 0].astype(int)
-                            _filter = 0
-                            if head_or_tail == 'head':
-                                for tmpHead in results_with_id:
-                                    if tmpHead == x_batch[i][0]:
-                                        break
-                                    tmpTriple = (tmpHead, x_batch[i][1], x_batch[i][2])
-                                    if (tmpTriple in train) or (tmpTriple in valid) or (tmpTriple in test):
-                                        continue
-                                    else:
-                                        _filter += 1
-                            else:
-                                for tmpTail in results_with_id:
-                                    if tmpTail == x_batch[i][2]:
-                                        break
-                                    tmpTriple = (x_batch[i][0], x_batch[i][1], tmpTail)
-                                    if (tmpTriple in train) or (tmpTriple in valid) or (tmpTriple in test):
-                                        continue
-                                    else:
-                                        _filter += 1
+                            if eval_type == 'org':
+                                sorted_indices = np.argsort(results, axis=-1, kind='stable')
+                                _filter = np.where(sorted_indices == 0)[0][0]
+                                res.append({
+                                    'rand_pos': 0,
+                                    'results': results
+                                })
 
-                            mr += (_filter + 1)
+                            elif eval_type == 'geq':
+                                _filter = np.sum(results <= results[0])
+
+                            elif eval_type == 'last':
+                                sorted_indices = np.argsort(results, axis=-1, kind='stable')
+                                _filter = np.where(sorted_indices == sorted_indices.shape[0]-1)[0][0]
+                                res.append({
+                                    'rand_pos': sorted_indices.shape[0]-1,
+                                    'results': results
+                                })
+
+                            elif eval_type == 'random':
+                                sorted_indices = np.argsort(results, axis=-1, kind='stable')
+                                _filter = np.where(sorted_indices == rand)[0][0]
+                                res.append({
+                                    'rand_pos': rand,
+                                    'results': results
+                                })
+
+
+                            elif eval_type == 'rotate':
+                                results        = np.reshape(results, [entity_array1.shape[0], 1])
+                                results_with_id    = np.hstack((np.reshape(entity_array1, [entity_array1.shape[0], 1]), results))
+                                results_with_id    = results_with_id[np.argsort(results_with_id[:, 1], kind='stable')]
+                                results_with_id    = results_with_id[:, 0].astype(int)
+
+                                _filter = 0
+                                if head_or_tail == 'head':
+                                    for tmpHead in results_with_id:
+                                        if tmpHead == x_batch[i][0]:
+                                            break
+                                        tmpTriple = (tmpHead, x_batch[i][1], x_batch[i][2])
+                                        if (tmpTriple in train) or (tmpTriple in valid) or (tmpTriple in test):
+                                            continue
+                                        else:
+                                            _filter += 1
+                                else:
+                                    for tmpTail in results_with_id:
+                                        if tmpTail == x_batch[i][2]:
+                                            break
+                                        tmpTriple = (x_batch[i][0], x_batch[i][1], tmpTail)
+                                        if (tmpTriple in train) or (tmpTriple in valid) or (tmpTriple in test):
+                                            continue
+                                        else:
+                                            _filter += 1
+
+                            mr  += (_filter + 1)
                             mrr += 1.0 / (_filter + 1)
-                            if _filter < 10:
-                                hits10 += 1
+                            if _filter < 10: hits10 += 1
+                            if _filter < 1: hits1 += 1
+                            if _filter < 3: hits3 += 1
 
-                        return np.array([mr, mrr, hits10])
+                        return np.array([mr, mrr, hits1, hits3, hits10])
 
                     if args.testIdx < (args.num_splits - 1):
-                        head_results = test_prediction(x_test[batch_test * args.testIdx : batch_test * (args.testIdx + 1)],
-                                                       y_test[batch_test * args.testIdx : batch_test * (args.testIdx + 1)],
-                                                       head_or_tail='head')
-                        tail_results = test_prediction(x_test[batch_test * args.testIdx : batch_test * (args.testIdx + 1)],
-                                                       y_test[batch_test * args.testIdx : batch_test * (args.testIdx + 1)],
-                                                       head_or_tail='tail')
+                        head_results = test_prediction(
+                            x_test[batch_test * args.testIdx: batch_test * (args.testIdx + 1)],
+                            y_test[batch_test * args.testIdx: batch_test * (args.testIdx + 1)],
+                            head_or_tail='head')
+                        tail_results = test_prediction(
+                            x_test[batch_test * args.testIdx: batch_test * (args.testIdx + 1)],
+                            y_test[batch_test * args.testIdx: batch_test * (args.testIdx + 1)],
+                            head_or_tail='tail')
                     else:
-                        head_results = test_prediction(x_test[batch_test * args.testIdx : len_test],
-                                                       y_test[batch_test * args.testIdx : len_test],
+                        head_results = test_prediction(x_test[batch_test * args.testIdx: len_test],
+                                                       y_test[batch_test * args.testIdx: len_test],
                                                        head_or_tail='head')
-                        tail_results = test_prediction(x_test[batch_test * args.testIdx : len_test],
-                                                       y_test[batch_test * args.testIdx : len_test],
+                        tail_results = test_prediction(x_test[batch_test * args.testIdx: len_test],
+                                                       y_test[batch_test * args.testIdx: len_test],
                                                        head_or_tail='tail')
 
-                    wri = open(_file + '.eval.' + str(args.testIdx) + '.txt', 'w')
+                    wri = open(_file + '.eval_{}.'.format(args.eval_type) + str(args.testIdx) + '.txt', 'w')
 
                     for _val in head_results:
                         wri.write(str(_val) + ' ')
@@ -261,4 +326,3 @@ else:
                     wri.write('\n')
 
                     wri.close()
-
