@@ -186,8 +186,10 @@ else:
                             new_x_batch = np.tile(x_batch[i], (len(entity2id), 1))
                             new_y_batch = np.tile(y_batch[i], (len(entity2id), 1))
 
-                            if head_or_tail == 'head': new_x_batch[:, 0] = entity_array
-                            else:                new_x_batch[:, 2] = entity_array
+                            if head_or_tail == 'head':
+                                new_x_batch[:, 0] = entity_array
+                            else:
+                                new_x_batch[:, 2] = entity_array
 
                             if eval_type != 'rotate':
                                 lstIdx = []
@@ -213,8 +215,10 @@ else:
                                 new_y_batch = np.insert(new_y_batch, rand, y_batch[i], axis=0)
 
                             elif eval_type == 'rotate':
-                                if head_or_tail == 'head':     entity_array1 = new_x_batch[:, 0]
-                                else:                 entity_array1 = new_x_batch[:, 2]
+                                if head_or_tail == 'head':
+                                    entity_array1 = new_x_batch[:, 0]
+                                else:
+                                    entity_array1 = new_x_batch[:, 2]
 
                             else:
                                 raise NotImplementedError
@@ -224,9 +228,11 @@ else:
                                 new_x_batch = np.append(new_x_batch, [x_batch[i]], axis=0)
                                 new_y_batch = np.append(new_y_batch, [y_batch[i]], axis=0)
 
-                            # if eval_type == 'rotate':
-                            #     if head_or_tail == 'head':     entity_array1 = new_x_batch[:, 0]
-                            #     else:                 entity_array1 = new_x_batch[:, 2]
+                            if eval_type == 'rotate':
+                                if head_or_tail == 'head':
+                                    entity_array1 = new_x_batch[:, 0]
+                                else:
+                                    entity_array1 = new_x_batch[:, 2]
 
                             results = []
                             listIndexes = range(0, len(new_x_batch), (int(args.neg_ratio) + 1) * args.batch_size)
