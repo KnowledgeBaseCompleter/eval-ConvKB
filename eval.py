@@ -33,6 +33,7 @@ parser.add_argument("--log_device_placement", default=False, type=bool, help="Lo
 parser.add_argument("--model_name", default='wn18rr', help="")
 parser.add_argument("--useConstantInit", action='store_true')
 parser.add_argument("--eval_type", default='rotate', help="")
+parser.add_argument("--add_layer_norm", action='store_true')
 
 parser.add_argument("--model_index", default='200', help="")
 parser.add_argument("--num_splits", default=8, type=int, help="Split the validation set into 8 parts for a faster evaluation")
@@ -138,7 +139,8 @@ else:
                 l2_reg_lambda=args.l2_reg_lambda,
                 batch_size=(int(args.neg_ratio) + 1)*args.batch_size,
                 is_trainable=args.is_trainable,
-                useConstantInit=args.useConstantInit)
+                useConstantInit=args.useConstantInit,
+                add_layer_norm=args.add_layer_norm)
 
             # Output directory for models and summaries
 
@@ -172,6 +174,7 @@ else:
                         }
                         scores = sess.run([cnn.predictions], feed_dict)
                         return scores
+
 
                     def test_prediction(x_batch, y_batch, head_or_tail='head'):
 
@@ -246,10 +249,6 @@ else:
                             if eval_type == 'org':
                                 sorted_indices = np.argsort(results, axis=-1, kind='stable')
                                 _filter = np.where(sorted_indices == 0)[0][0]
-                                res.append({
-                                    'rand_pos': 0,
-                                    'results': results
-                                })
 
                             elif eval_type == 'geq':
                                 _filter = np.sum(results <= results[0])
@@ -257,19 +256,10 @@ else:
                             elif eval_type == 'last':
                                 sorted_indices = np.argsort(results, axis=-1, kind='stable')
                                 _filter = np.where(sorted_indices == sorted_indices.shape[0]-1)[0][0]
-                                res.append({
-                                    'rand_pos': sorted_indices.shape[0]-1,
-                                    'results': results
-                                })
 
                             elif eval_type == 'random':
                                 sorted_indices = np.argsort(results, axis=-1, kind='stable')
                                 _filter = np.where(sorted_indices == rand)[0][0]
-                                res.append({
-                                    'rand_pos': rand,
-                                    'results': results
-                                })
-
 
                             elif eval_type == 'rotate':
                                 results        = np.reshape(results, [entity_array1.shape[0], 1])

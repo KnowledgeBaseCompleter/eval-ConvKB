@@ -9,7 +9,8 @@ class ConvKB(object):
     """
 
     def __init__(self, sequence_length, num_classes, embedding_size, filter_sizes, num_filters, vocab_size,
-                 pre_trained=[], l2_reg_lambda=0.001, batch_size=256, is_trainable=True, useConstantInit=False):
+                 pre_trained=[], l2_reg_lambda=0.001, batch_size=256, is_trainable=True, useConstantInit=False,
+                 add_layer_norm=False):
         # Placeholders for input, output and dropout
         self.input_x = tf.placeholder(tf.int32, [None, sequence_length], name="input_x")
         self.input_y = tf.placeholder(tf.float32, [None, num_classes], name="input_y")
@@ -48,7 +49,10 @@ class ConvKB(object):
                     padding="VALID",
                     name="conv")
                 # Apply nonlinearity
-                h = tf.nn.relu(tf.nn.bias_add(conv, b), name="relu")
+                h = tf.nn.bias_add(conv, b)
+                if add_layer_norm:
+                    h = tf.contrib.layers.layer_norm(h, begin_norm_axis=-1)
+                h = tf.nn.relu(h, name="relu")
                 pooled_outputs.append(h)
 
         # Combine all the pooled features

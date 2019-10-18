@@ -31,6 +31,7 @@ parser.add_argument("--saveStep", default=200, type=int, help="")
 parser.add_argument("--allow_soft_placement", default=True, type=bool, help="Allow device soft device placement")
 parser.add_argument("--log_device_placement", default=False, type=bool, help="Log placement of ops on devices")
 parser.add_argument("--model_name", default='wn18rr', help="")
+parser.add_argument("--add_layer_norm", action='store_true')
 parser.add_argument("--useConstantInit", action='store_true')
 
 parser.add_argument("--model_index", default='200', help="")
@@ -105,7 +106,8 @@ with tf.Graph().as_default():
             vocab_size=len(words_indexes),
             l2_reg_lambda=args.l2_reg_lambda,
             is_trainable=args.is_trainable,
-            useConstantInit=args.useConstantInit)
+            useConstantInit=args.useConstantInit,
+            add_layer_norm=args.add_layer_norm)
 
         optimizer = tf.train.AdamOptimizer(learning_rate=args.learning_rate)
         # optimizer = tf.train.RMSPropOptimizer(learning_rate=args.learning_rate)
